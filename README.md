@@ -207,7 +207,3 @@ A resposta será gerada com base nos documentos indexados.
 ## Objetivo
 
 Este projeto tem como objetivo explorar técnicas de **RAG aplicadas ao domínio jurídico**, permitindo consultas inteligentes em grandes volumes de decisões administrativas.
-
-# Licença
-
-MIT License
