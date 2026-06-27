@@ -1,209 +1,165 @@
 # Legal Decision RAG
 
-Sistema de **Retrieval-Augmented Generation (RAG)** para consulta e análise de decisões administrativas relacionadas a recursos de multas.
+A **Hybrid Retrieval-Augmented Generation (RAG)** system for querying and analyzing administrative decisions on fine appeals (recursos de multas). Ask questions in natural language (Portuguese) and get answers grounded in indexed legal documents using local LLMs.
 
-O sistema permite realizar perguntas em linguagem natural e obter respostas baseadas em documentos jurídicos indexados, utilizando recuperação semântica e geração por LLM.
-
-## Arquitetura
-
-O projeto utiliza uma arquitetura de **RAG híbrido**, combinando busca vetorial e busca lexical.
-
-Pipeline:
+## Architecture
 
 ```
 PDFs
-↓
-Loader
-↓
-Chunking
-↓
-Embeddings
-↓
+  ↓
+Loader (PyMuPDF)
+  ↓
+Chunking (Recursive + Semantic)
+  ↓
+Embeddings (all-MiniLM-L6-v2)
+  ↓
 FAISS Vector Store
-↓
-Retriever
-↓
-Reranker
-↓
-LLM
-↓
-Resposta
+  ↓
+Hybrid Retriever (BM25 lexical + FAISS semantic)
+  ↓
+CrossEncoder Reranker
+  ↓
+LLM (qwen2.5:7b-instruct via Ollama)
+  ↓
+Answer
 ```
 
-## Tecnologias utilizadas
+Hybrid retrieval combines lexical search (BM25) with semantic search (FAISS), then re-ranks the top results using a CrossEncoder for higher relevance before feeding context to the LLM.
 
-* Python
-* LangChain
-* FAISS
-* Sentence Transformers
-* BM25 Retriever
-* CrossEncoder Reranker
-* Ollama (LLM local)
-* UV (gerenciador de dependências)
+## Tech Stack
 
-**Principais bibliotecas:**
+| Technology | Role |
+|---|---|
+| Python 3.13 | Language |
+| LangChain / LangChain-Community | RAG orchestration (loaders, retrievers, chains) |
+| FAISS | Vector store |
+| Sentence-Transformers | Embeddings (`all-MiniLM-L6-v2`) + CrossEncoder reranker (`ms-marco-MiniLM-L-6-v2`) |
+| BM25 (rank-bm25) | Lexical retrieval |
+| Ollama | Local LLM host (`qwen2.5:7b-instruct`) |
+| PyMuPDF | PDF text extraction |
+| UV | Dependency management |
 
-* langchain
-* langchain-community
-* faiss-cpu
-* sentence-transformers
-* pymupdf
-
-## Estrutura do projeto
+## Project Structure
 
 ```
 legal-decision-rag/
-│
 ├── data/
-│   └── raw/
-│       └── pdfs
-│
-├── vector_store/
-│
+│   ├── raw/                    # Source PDFs (18 sample files)
+│   └── interim/
+│       └── semantic_chunks.pkl # Pre-processed chunks
 ├── notebooks/
-│
+│   ├── create_vector_store.ipynb
+│   └── running_rag.ipynb
 ├── src/
-│
+│   ├── embeddings/
+│   │   └── embedding_model.py
 │   ├── ingestion/
 │   │   ├── pdf_loader.py
 │   │   └── chunking.py
-│   │
-│   ├── embeddings/
-│   │   └── embedding_model.py
-│   │
-│   ├── vector_store/
-│   │   └── faiss_store.py
-│   │
-│   ├── retrievers/
-│   │   └── hybrid_retriever.py
-│   │
-│   ├── reranker/
-│   │   └── cross_encoder.py
-│   │
+│   ├── llm/
+│   │   └── model.py
 │   ├── prompts/
 │   │   └── legal_prompt.py
-│   │
-│   └── rag/
-│       └── rag_chain.py
-│
-├── scripts/
-│   ├── build_index.py
-│
-└── main.py
+│   ├── rerankers/
+│   │   └── cross_reranker.py
+│   ├── retrivers/
+│   │   ├── bm5_retriver.py
+│   │   ├── hybrid_retriver.py
+│   │   └── vector_retriver.py
+│   ├── scripts/
+│   │   └── build_index.py
+│   └── vector_store/
+│       └── faiss_store.py
+├── vector_store/               # Serialized FAISS index
+│   ├── index.faiss
+│   └── index.pkl
+├── main.py                     # CLI entry point (REPL loop)
+├── pyproject.toml
+├── uv.lock
+└── README.md
 ```
 
-## Instalação
+## Prerequisites
 
-Este projeto utiliza **uv** para gerenciamento de dependências.
-
-Instalar dependências:
+- Python 3.13+
+- [UV](https://docs.astral.sh/uv/) (recommended) or pip
+- [Ollama](https://ollama.ai/) running locally with the model:
 
 ```bash
+ollama pull qwen2.5:7b-instruct
+```
+
+## Setup
+
+```bash
+# Install dependencies
 uv sync
-```
 
-Alternativamente:
-
-```bash
+# Or with pip
 pip install -r requirements.txt
 ```
 
-## Preparação dos dados
+### Place your PDFs
 
-Coloque os PDFs na pasta:
-
-```
-data/raw/
-```
-
-Exemplo:
+Put your administrative decision PDFs in `data/raw/`:
 
 ```
 data/raw/recurso_001.pdf
 data/raw/recurso_002.pdf
 ```
 
-# Construção do índice vetorial
-
-Para criar o índice FAISS:
+### Build the vector index
 
 ```bash
-uv run python scripts/build_index.py
+uv run python src/scripts/build_index.py
 ```
 
-Esse processo executa:
+This runs: PDF → chunking (recursive + semantic) → embeddings → FAISS. The index is saved to `vector_store/`.
 
-```
-PDF → chunking → embeddings → FAISS
-```
-
-Os arquivos gerados serão salvos em:
-
-```
-vector_store/
-```
-
-## Executar o sistema
-
-Execute o programa principal:
+## Usage
 
 ```bash
 uv run python main.py
 ```
 
-Exemplo de uso:
+The REPL loop accepts questions in Portuguese. Example:
 
 ```
-Pergunta:
-Quando um recurso pode ser deferido?
+Pergunta: Quando um recurso pode ser deferido?
 
-Resposta:
-O recurso pode ser deferido quando houver comprovação de erro na autuação ou irregularidade no processo administrativo.
+Resposta: O recurso pode ser deferido quando houver comprovação de erro na autuação ou irregularidade no processo administrativo.
 ```
 
-## Busca híbrida
+Type `exit` or `quit` to stop.
 
-O sistema suporta **Hybrid Retrieval**, combinando:
+## Dataset
 
-* **BM25** → busca lexical
-* **FAISS** → busca semântica
+The `data/raw/` folder includes 18 sample PDFs covering different decision types:
 
-Essa abordagem melhora significativamente a recuperação de contexto em documentos legais.
+- **Deferimento** (granted) — `recurso_deferimento_02`, `03`, `04`
+- **Indeferimento** (denied) — `recurso_indeferimento_05`, `06`, `07`
+- **Parcial** (partial) — `recurso_parcial_08`, `09`, `10`
+- **Noisy** (with noise) — 9 PDFs with varying quality for robustness testing
 
-## Reranking
+## Hybrid Retrieval
 
-Após a recuperação inicial, os documentos são reordenados utilizando **CrossEncoder Reranker**, aumentando a relevância do contexto enviado à LLM.
+| Strategy | Method | Strengths |
+|---|---|---|
+| Lexical | BM25 | Exact keyword matching, handles legal jargon |
+| Semantic | FAISS + all-MiniLM-L6-v2 | Understands meaning, handles synonyms |
+| Fusion | Weighted combination + dedup | Best of both worlds |
+| Reranking | CrossEncoder (ms-marco-MiniLM-L-6-v2) | Re-ranks top-10 → top-5 by relevance |
 
-Pipeline:
+## Future Improvements
 
-```
-Retriever → Top 10 documentos
-↓
-Reranker
-↓
-Top 5 documentos
-↓
-LLM
-```
+- FastAPI REST API
+- Web interface
+- Automated RAG evaluation (RAGAS, etc.)
+- Query rewriting
+- Multi-query retrieval
+- Context compression
+- Support for vector databases (Qdrant, Weaviate)
 
-## Exemplo de pergunta
+## License
 
-```
-Quando um recurso administrativo pode ser indeferido?
-```
-
-A resposta será gerada com base nos documentos indexados.
-
-## Melhorias futuras
-
-* API com FastAPI
-* Interface web
-* Avaliação automática de RAG
-* Query rewriting
-* Multi-query retrieval
-* Context compression
-* Suporte a bancos vetoriais (Qdrant, Weaviate)
-
-## Objetivo
-
-Este projeto tem como objetivo explorar técnicas de **RAG aplicadas ao domínio jurídico**, permitindo consultas inteligentes em grandes volumes de decisões administrativas.
+MIT © [Clébio Júnior](LICENSE)
