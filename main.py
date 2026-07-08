@@ -28,33 +28,29 @@ def main():
         db=db,
     )
 
-    while True:
-        query = input("\nPergunta: ")
+    query = input("\nPergunta: ")
 
-        if query.lower() in ["exit", "quit"]:
-            break
+    print("Analisando..")
 
-        print("Analisando..")
+    result = graph.invoke(
+        {
+            "question": query,
+            "query_type": None,
+            "sub_questions": [],
+            "retrieved_docs": [],
+            "reranked_docs": [],
+            "context": "",
+            "answer": None,
+            "critique": None,
+            "is_satisfactory": False,
+            "iterations": 0,
+            "max_iterations": 2,
+            "conversation_history": [],
+        }
+    )
 
-        result = graph.invoke(
-            {
-                "question": query,
-                "query_type": None,
-                "sub_questions": [],
-                "retrieved_docs": [],
-                "reranked_docs": [],
-                "context": "",
-                "answer": None,
-                "critique": None,
-                "is_satisfactory": False,
-                "iterations": 0,
-                "max_iterations": 2,
-                "conversation_history": [],
-            }
-        )
-
-        print("\nResposta:\n", result.get("answer"))
-        print("\nCritique:\n", result.get("critique"))
+    print("\n -------------- Resposta -------------- \n", result.get("answer"))
+    print("\n -------------- Critique -------------- \n", result.get("critique"))
 
 
 if __name__ == "__main__":
