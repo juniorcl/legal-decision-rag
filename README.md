@@ -97,7 +97,7 @@ legal-decision-rag/
 │   ├── llm/                # LLM integration
 │   ├── prompts/            # Prompt templates
 │   ├── rerankers/          # Cross-encoder reranking
-│   ├── retrivers/          # BM25, vector, and hybrid retrievers
+│   ├── retrievers/         # BM25, vector, and hybrid retrievers
 │   ├── scripts/            # Index-building script
 │   └── vector_store/       # FAISS store helpers
 ├── tests/                  # Basic workflow tests

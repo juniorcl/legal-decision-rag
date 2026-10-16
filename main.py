@@ -3,7 +3,7 @@ from src.graph.graph import build_legal_rag_graph
 from src.llm.model import load_llm
 from src.prompts.legal_prompt import build_prompt
 from src.rerankers.cross_reranker import apply_cross_rerank
-from src.retrivers.hybrid_retriver import get_hybrid_retriver
+from src.retrievers.hybrid_retriever import get_hybrid_retriever
 from src.vector_store.faiss_store import load_vector_store
 
 
@@ -23,7 +23,7 @@ def main():
     graph = build_legal_rag_graph(
         llm=rag,
         prompt=prompt,
-        retriever_func=get_hybrid_retriver,
+        retriever_func=get_hybrid_retriever,
         reranker_func=apply_cross_rerank,
         db=db,
     )
