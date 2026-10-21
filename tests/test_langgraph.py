@@ -6,9 +6,22 @@ from src.graph.graph import build_legal_rag_graph
 
 class StubLLM:
     def __init__(self):
+        """Initialize the test model and record the calls it receives."""
         self.calls = []
 
     def invoke(self, prompt):
+        """Return a simulated response based on the prompt content.
+
+        Parameters
+        ----------
+        prompt : Any
+            Prompt sent by the graph workflow.
+
+        Returns
+        -------
+        types.SimpleNamespace
+            Object containing the simulated response in the `content` attribute.
+        """
         self.calls.append(str(prompt))
         text = str(prompt).lower()
         if "classifique" in text:
@@ -24,6 +37,7 @@ class StubLLM:
 
 class LangGraphTests(unittest.TestCase):
     def test_simple_query_completes_graph(self):
+        """Verify that a simple question traverses the graph to produce an answer."""
         graph = build_legal_rag_graph(
             llm=StubLLM(),
             prompt="Contexto: {context}\nPergunta: {question}",
@@ -53,6 +67,7 @@ class LangGraphTests(unittest.TestCase):
         self.assertIn("Score:", result["critique"])
 
     def test_ambiguous_query_rewrites_until_iteration_limit(self):
+        """Verify that ambiguous questions are rewritten up to the configured limit."""
         graph = build_legal_rag_graph(
             llm=StubLLM(),
             prompt="Contexto: {context}\nPergunta: {question}",
