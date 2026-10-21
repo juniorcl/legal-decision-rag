@@ -8,6 +8,11 @@ from src.vector_store.faiss_store import load_vector_store
 
 
 def main():
+    """Run the interactive legal question-answering workflow.
+
+    Load the RAG components, compile the processing graph, prompt the user
+    for a question, and display the generated answer and evaluation.
+    """
     print("Loading Embeddings...")
     embeddings = load_embeddings()
 
