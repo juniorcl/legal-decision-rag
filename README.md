@@ -80,6 +80,7 @@ The LangGraph layer introduces state management and conditional branching so the
 | rank-bm25 | Lexical retrieval (BM25) |
 | Ollama | Local LLM hosting |
 | PyMuPDF | PDF extraction |
+| Langfuse | Tracing and monitoring of RAG interactions |
 | UV | Dependency and environment management |
 
 ## Project Structure
@@ -95,6 +96,7 @@ legal-decision-rag/
 │   ├── graph/              # LangGraph state, nodes, and workflow
 │   ├── ingestion/          # PDF loading and chunking
 │   ├── llm/                # LLM integration
+│   ├── observability/      # Langfuse tracing helpers
 │   ├── prompts/            # Prompt templates
 │   ├── rerankers/          # Cross-encoder reranking
 │   ├── retrievers/         # BM25, vector, and hybrid retrievers
@@ -130,6 +132,16 @@ If you prefer pip:
 ```bash
 pip install -e .
 ```
+
+Create a `.env` file from `.env.example` and fill in your Langfuse credentials (a local instance or Langfuse Cloud):
+
+```text
+LANGFUSE_SECRET_KEY="..."
+LANGFUSE_PUBLIC_KEY="..."
+LANGFUSE_BASE_URL="http://localhost:3000"
+```
+
+The optional `LANGFUSE_USER_ID` and `LANGFUSE_SESSION_ID` variables group traces by user and session. If the credentials are missing, the application still runs, only without tracing.
 
 ## Data Preparation
 
@@ -169,6 +181,19 @@ Pergunta: Quais são os principais motivos de indeferimento?
 
 The system will return an answer grounded in the retrieved context and a critique score for the generated response.
 
+## Observability with Langfuse
+
+Every run of `main.py` is traced in Langfuse. The integration is implemented in `src/observability/langfuse_tracing.py` and produces:
+
+- one root trace per user question, with the question as input and the answer/critique as output
+- child spans and generations for each LangGraph node, retriever, and LLM call (query analysis, decomposition, rewrite, retrieval, generation, and critique)
+- metadata such as the classified query type, number of iterations, and whether the answer was considered satisfactory
+- a numeric `critique_score` attached to the trace, parsed from the critique output
+
+Because the Langfuse callback is passed through `graph.invoke`, the full graph execution is captured, including retries triggered by the critique loop. Open your Langfuse project and check the **Tracing** view to inspect prompts, completions, latency, and scores for each interaction.
+
+Tracing is optional. When `LANGFUSE_PUBLIC_KEY` or `LANGFUSE_SECRET_KEY` is not set, the helper functions become no-ops and the CLI works exactly as before.
+
 ## How the Retrieval Pipeline Works
 
 1. The user submits a question.
@@ -195,7 +220,7 @@ Planned enhancements include:
 - a web interface
 - evaluation metrics such as RAGAS
 - support for online LLM providers such as OpenAI
-- logging and monitoring for production use
+- monitoring dashboards and alerting on top of the Langfuse traces
 
 ## License
 
